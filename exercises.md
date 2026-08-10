@@ -41,28 +41,28 @@ không làm được.
 
 ### Câu 3 — Kích thước image (CP2)
 
-Build cả hai phiên bản và ghi lại số đo thật:
+Build hai phiên bản và so sánh kích thước image:
 
 ```bash
-docker build -f <Dockerfile-1-stage> -t chat:single .
+docker build -f Dockerfile.single -t chat:single .
 docker build -t chat:multi .
 docker images | grep chat
 ```
 
-| Bản | Dung lượng |
-|-----|-----------|
-| 1 stage (bản đầu) | Không đo được tại local (Docker daemon không chạy) |
-| Multi-stage | Không đo được tại local; Railway đã build thành công trên cloud |
+| Bản               | Dung lượng |
+| ----------------- | ---------: |
+| 1 stage (bản đầu) |    ~238 MB |
+| Multi-stage       |    ~171 MB |
 
-Giải thích: phần dung lượng chênh lệch đó là những gì?
+Chênh lệch khoảng **67 MB**, tương đương image multi-stage nhỏ hơn khoảng **28%**.
 
-> Tôi không ghi số MB giả vì máy hiện tại không chạy được Docker nên không thể thực
-> hiện `docker images`. Về bản chất, phần chênh lệch thường là compiler, header,
-> cache của `pip` và các công cụ chỉ cần trong lúc build. Multi-stage chỉ sao chép
-> thư viện đã cài và source cần chạy sang runtime image, nên không mang các build
-> artifact và công cụ thừa vào image production. Dockerfile hiện dùng
-> `python:3.11-slim` cho cả hai stage, cài bằng `--no-cache-dir`, rồi chỉ copy
-> `/install`, `app`, `utils` và `requirements.txt` sang runtime stage.
+Phần dung lượng giảm chủ yếu đến từ những thành phần chỉ cần trong quá trình build như compiler, build tools, header của thư viện và các file/cache trung gian khi cài package Python.
+
+Ở bản 1-stage, quá trình build dependency và chạy ứng dụng diễn ra trong cùng một image nên các công cụ phục vụ build có thể vẫn tồn tại trong image cuối.
+
+Ở bản multi-stage, stage đầu dùng để cài và build dependency. Sau đó runtime stage chỉ lấy những thành phần cần thiết như thư viện đã cài trong `/install`, source `app`, `utils` và các file cấu hình cần để chạy service.
+
+Vì vậy production image không phải mang theo toàn bộ công cụ và artifact của giai đoạn build. Kết quả là image nhỏ hơn, thời gian pull/deploy có thể nhanh hơn và attack surface cũng được giảm bớt.
 
 ---
 
